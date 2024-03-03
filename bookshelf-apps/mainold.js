@@ -1,6 +1,5 @@
 const STORAGE_KEY = 'BOOKSHELF_APPS';
 const RENDER_EVENT = 'render-books';
-const SAVED_EVENT = 'savedBook';
 
 // Mendefinisikan fungsi addBookToShelf di luar event listener form
 function addBookToShelf(book) {
@@ -34,59 +33,71 @@ function addBookToShelf(book) {
 
     deleteButton.addEventListener('click', function() {
         // Hapus buku dari rak
-        deleteBook(book.id);
+        deleteBook(book);
     });
 
     // Menambahkan elemen buku ke rak
     shelf.appendChild(bookElement);
 }
 
-// Fungsi untuk mendapatkan data dari localStorage
-function getBooksFromLocalStorage() {
-    let booksData = localStorage.getItem(STORAGE_KEY);
-    return booksData ? JSON.parse(booksData) : [];
-}
-
-// Fungsi untuk menyimpan data ke localStorage
-function saveBooksToLocalStorage(books) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(books));
-    document.dispatchEvent(new Event(RENDER_EVENT));
-}
-
-// Fungsi untuk menambahkan buku baru
-function addBook(title, author, year, isComplete) {
-    let books = getBooksFromLocalStorage();
-    let newBook = {
-        id: +new Date(),
+// Mendapatkan data dari form
+let form = document.getElementById('inputBook');
+form.addEventListener('submit', function (e) { // Ubah 'bookSubmit' menjadi 'submit'
+    e.preventDefault();
+    let title = document.getElementById('inputBookTitle').value;
+    let author = document.getElementById('inputBookAuthor').value;
+    let year = document.getElementById('inputBookYear').value;
+    let isComplete = document.getElementById('inputBookIsComplete').checked;
+    let book = {
         title,
         author,
         year,
         isComplete
     };
-    books.push(newBook);
-    saveBooksToLocalStorage(books);
-}
 
-// Fungsi untuk menghapus buku berdasarkan ID
-function deleteBook(bookId) {
-    let books = getBooksFromLocalStorage();
-    books = books.filter(book => book.id !== bookId);
-    saveBooksToLocalStorage(books);
-}
+    // Panggil fungsi addBookToShelf di sini
+    addBookToShelf(book);
 
-// Fungsi untuk memperbarui status isComplete buku berdasarkan ID
-function updateBookStatus(bookId, isComplete) {
-    let books = getBooksFromLocalStorage();
-    let index = books.findIndex(book => book.id === bookId);
+    // Menyimpan buku ke dalam localStorage
+    let books = JSON.parse(localStorage.getItem('books')) || [];
+    books.push(book);
+    localStorage.setItem('books', JSON.stringify(books));
+    form.reset();
+});
+
+// Fungsi untuk memindahkan buku dari rak "Belum selesai dibaca" ke rak "Selesai dibaca"
+function markAsComplete(book) {
+    let books = JSON.parse(localStorage.getItem('books')) || [];
+    let index = books.findIndex(b => b.title === book.title && b.author === book.author && b.year === book.year);
     if (index !== -1) {
-        books[index].isComplete = isComplete;
-        saveBooksToLocalStorage(books);
+        books[index].isComplete = true;
+        localStorage.setItem('books', JSON.stringify(books));
+        renderBooks();
     }
+}
+
+// Fungsi untuk memindahkan buku dari rak "Selesai dibaca" ke rak "Belum selesai dibaca"
+function markAsUncomplete(book) {
+    let books = JSON.parse(localStorage.getItem('books')) || [];
+    let index = books.findIndex(b => b.title === book.title && b.author === book.author && b.year === book.year);
+    if (index !== -1) {
+        books[index].isComplete = false;
+        localStorage.setItem('books', JSON.stringify(books));
+        renderBooks();
+    }
+}
+
+// Fungsi untuk menghapus buku dari rak
+function deleteBook(book) {
+    let books = JSON.parse(localStorage.getItem('books')) || [];
+    books = books.filter(b => b.title !== book.title || b.author !== book.author || b.year !== book.year);
+    localStorage.setItem('books', JSON.stringify(books));
+    renderBooks();
 }
 
 // Fungsi untuk merender ulang rak buku
 function renderBooks() {
-    let books = getBooksFromLocalStorage();
+    let books = JSON.parse(localStorage.getItem('books')) || [];
     let incompleteShelf = document.getElementById('incompleteBookshelfList');
     let completeShelf = document.getElementById('completeBookshelfList');
     incompleteShelf.innerHTML = '';
@@ -102,7 +113,7 @@ function renderBooks() {
 
 // Fungsi untuk mencari buku berdasarkan judul
 function searchBooks(keyword) {
-    let books = getBooksFromLocalStorage();
+    let books = JSON.parse(localStorage.getItem('books')) || [];
     let searchResult = books.filter(book =>
         book.title.toLowerCase().includes(keyword.toLowerCase())
     );
@@ -132,6 +143,7 @@ function renderSearchResult(books) {
     });
 }
 
+
 // Event listener untuk form pencarian
 let searchForm = document.getElementById('searchBook');
 searchForm.addEventListener('submit', function(e) {
@@ -140,39 +152,5 @@ searchForm.addEventListener('submit', function(e) {
     searchBooks(searchInput);
 });
 
-// Event listener untuk form tambah buku
-let addForm = document.getElementById('inputBook');
-addForm.addEventListener('submit', function(e) {
-    e.preventDefault();
-    let title = document.getElementById('inputBookTitle').value;
-    let author = document.getElementById('inputBookAuthor').value;
-    let year = document.getElementById('inputBookYear').value;
-    let isComplete = document.getElementById('inputBookIsComplete').checked;
-    
-    addBook(title, author, year, isComplete);
-    renderBooks();
-
-    addForm.reset();
-});
-
 // Panggil fungsi renderBooks saat halaman dimuat
 document.addEventListener('DOMContentLoaded', renderBooks);
-
-// Mendefinisikan fungsi untuk cek localStorage
-function isStorageExist() {
-    if (typeof(Storage) === undefined) {
-        alert("Browser kamu tidak mendukung local storage");
-        return false;
-    }
-    return true;
-}
-
-// Fungsi utama untuk memastikan localStorage tersedia
-function main() {
-    if (isStorageExist()) {
-        return;
-    }
-}
-
-// Panggil fungsi utama
-main();
